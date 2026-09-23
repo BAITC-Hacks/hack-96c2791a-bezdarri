@@ -98,5 +98,178 @@
     "readiness_level": "Ready",
     "id": "6fd77252-42fb-469a-9251-f80aaab924c3",
     "created_at": "2026-09-23T09:35:59.631991+00:00"
+  },
+  {
+    "title": "Improving Sales at 13 Block Shop 1111",
+    "context": "13 Block Shop is a drink shop located in a dormitory setting. The primary goal is to increase sales.",
+    "need": "There is a need to understand customer preferences and improve marketing strategies to boost sales.",
+    "data_materials": "123",
+    "expected_result": "An increase in sales volume and customer footfall at the shop.",
+    "success_criteria": "x2",
+    "constraints": "no limits",
+    "users": "dorm citizens",
+    "contact": "1234",
+    "readiness_score": 60,
+    "readiness_level": "Working",
+    "ai_analysis": {
+      "task": {
+        "title": "Improving Sales at 13 Block Shop 1111",
+        "context": "13 Block Shop is a drink shop located in a dormitory setting. The primary goal is to increase sales.",
+        "need": "There is a need to understand customer preferences and improve marketing strategies to boost sales.",
+        "data_materials": "123",
+        "expected_result": "An increase in sales volume and customer footfall at the shop.",
+        "success_criteria": "x2",
+        "constraints": "no limits",
+        "users": "dorm citizens",
+        "contact": "1234"
+      },
+      "missing_fields": [],
+      "questions": [],
+      "scoring": {
+        "breakdown": [
+          {
+            "category": "Context and need",
+            "score": 15,
+            "max_score": 20,
+            "reason": "Clear context provided, but more details on specific customer preferences would improve clarity.",
+            "improvement": "Specify customer preferences that need to be understood."
+          },
+          {
+            "category": "Data and materials",
+            "score": 0,
+            "max_score": 20,
+            "reason": "No specific data or analysis materials were detailed besides a placeholder (123).",
+            "improvement": "Provide details of relevant data or materials to be utilized."
+          },
+          {
+            "category": "Expected result",
+            "score": 10,
+            "max_score": 15,
+            "reason": "The expected result outlines an increase in sales and footfall, which is vague.",
+            "improvement": "Define specific metrics for what constitutes 'increased sales' and 'customer footfall'."
+          },
+          {
+            "category": "Success criteria",
+            "score": 15,
+            "max_score": 15,
+            "reason": "A specific target of doubling sales is provided, which is actionable.",
+            "improvement": "No improvement needed."
+          },
+          {
+            "category": "Constraints",
+            "score": 10,
+            "max_score": 10,
+            "reason": "Stated no limits on budget or resources, which provides clarity.",
+            "improvement": "No improvement needed."
+          },
+          {
+            "category": "Users",
+            "score": 10,
+            "max_score": 10,
+            "reason": "Identifies primary customers as 'dorm citizens', which is specific.",
+            "improvement": "No improvement needed."
+          },
+          {
+            "category": "Business contact and interaction format",
+            "score": 0,
+            "max_score": 10,
+            "reason": "Contact information provided needs description of interaction format.",
+            "improvement": "Clarify the interaction format with the contact."
+          }
+        ],
+        "total_score": 60,
+        "level": "Working"
+      }
+    },
+    "id": "652135d5-13e7-4d20-b470-4d2e396025e8",
+    "created_at": "2026-09-23T11:26:57.816104+00:00"
+  },
+  {
+    "title": "Sales Improvement Strategy for 13 Block Shop",
+    "context": "13 Block Shop is a drink shop looking to increase its sales.",
+    "need": "The business requires strategies to boost its sales figures.",
+    "data_materials": "a lotoot",
+    "expected_result": "dorm civ",
+    "success_criteria": "sales",
+    "constraints": "no",
+    "users": "20-21yo",
+    "contact": "",
+    "industry": "",
+    "readiness_score": 45,
+    "readiness_level": "Working",
+    "ai_analysis": {
+      "task": {
+        "title": "Sales Improvement Strategy for 13 Block Shop",
+        "context": "13 Block Shop is a drink shop looking to increase its sales.",
+        "need": "The business requires strategies to boost its sales figures.",
+        "data_materials": "a lotoot",
+        "expected_result": "dorm civ",
+        "success_criteria": "sales",
+        "constraints": "no",
+        "users": "20-21yo",
+        "contact": ""
+      },
+      "missing_fields": [
+        "contact"
+      ],
+      "questions": [],
+      "scoring": {
+        "breakdown": [
+          {
+            "category": "Context and need",
+            "score": 15,
+            "max_score": 20,
+            "reason": "The context is clear, but the need could be more specific about the factors affecting sales.",
+            "improvement": "Specify what challenges are currently hindering sales."
+          },
+          {
+            "category": "Data and materials",
+            "score": 5,
+            "max_score": 20,
+            "reason": "The provided data material 'a lotoot' is unclear and does not give a solid understanding of sales performance.",
+            "improvement": "Provide detailed sales data or market analysis."
+          },
+          {
+            "category": "Expected result",
+            "score": 5,
+            "max_score": 15,
+            "reason": "The expected result 'dorm civ' is ambiguous and lacks clarity on specific sales targets.",
+            "improvement": "Specify a concrete sales target or percentage increase desired."
+          },
+          {
+            "category": "Success criteria",
+            "score": 5,
+            "max_score": 15,
+            "reason": "Success is defined as 'sales' but needs a more quantitative measure.",
+            "improvement": "Outline specific metrics or KPIs to evaluate success."
+          },
+          {
+            "category": "Constraints",
+            "score": 10,
+            "max_score": 10,
+            "reason": "No constraints were mentioned, indicating flexibility in planning.",
+            "improvement": "N/A"
+          },
+          {
+            "category": "Users",
+            "score": 5,
+            "max_score": 10,
+            "reason": "The primary customer demographic is briefly identified, but not detailed in terms of behaviors or preferences.",
+            "improvement": "Elaborate on the target age group's preferences and buying habits."
+          },
+          {
+            "category": "Business contact and interaction format",
+            "score": 0,
+            "max_score": 10,
+            "reason": "No contact information provided.",
+            "improvement": "Identify a business contact for future communications."
+          }
+        ],
+        "total_score": 45,
+        "level": "Working"
+      }
+    },
+    "id": "6a93ddcc-827f-4694-90f3-94f8feea64ac",
+    "created_at": "2026-09-23T11:43:03.387917+00:00"
   }
 ]
