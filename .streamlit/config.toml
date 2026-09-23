@@ -3,9 +3,9 @@
 fastReruns = false
 
 [theme]
-base = "dark"
-primaryColor = "#8B9DFF"
-backgroundColor = "#0E1420"
-secondaryBackgroundColor = "#192334"
-textColor = "#E8EDF5"
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#F5F7FB"
+secondaryBackgroundColor = "#EEF1F7"
+textColor = "#18243B"
 font = "sans serif"

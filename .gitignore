@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 skills.md
 .env
 case.md
-=======
 .venv/
 __pycache__/
 *.py[cod]
@@ -13,4 +11,3 @@ __pycache__/
 .pytest_cache/
 *.tmp
 .runtime/
->>>>>>> e05e849 (Build initial end-to-end MVP)

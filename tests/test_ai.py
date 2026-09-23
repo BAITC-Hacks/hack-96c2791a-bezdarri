@@ -276,6 +276,7 @@ class AITests(unittest.TestCase):
     def test_clarify_uses_original_description_all_answers_and_current_card(self):
         self.responses.append(response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0]))
         app = AppTest.from_file(str(ROOT / "app.py")).run()
+        app.sidebar.radio[0].set_value("Create Task").run()
         app.text_area(key="business_description").set_value(DESCRIPTION)
         app.button(key="analyze").click().run()
         app.text_area(key="card_constraints").set_value(DETAILS["constraints"]).run()
@@ -287,7 +288,7 @@ class AITests(unittest.TestCase):
         first = response_for(updated, [16, 16, 0, 0, 7, 0, 0])
         first["questions"] = first["questions"][:1]
         self.responses.append(first)
-        next(button for button in app.button if button.label == "Update task with answers").click().run()
+        app.button(key="clarify").click().run()
         self.assertFalse(app.error)
         payload = json.loads(self.requests[-1]["input"])
         self.assertEqual(payload["mode"], "clarify")
@@ -306,7 +307,7 @@ class AITests(unittest.TestCase):
         second = response_for(updated, [16, 16, 12, 0, 7, 0, 7])
         second["questions"] = []
         self.responses.append(second)
-        next(button for button in app.button if button.label == "Update task with answers").click().run()
+        app.button(key="clarify").click().run()
         self.assertFalse(app.exception)
         self.assertFalse(app.error)
         payload = json.loads(self.requests[-1]["input"])
@@ -357,6 +358,7 @@ class AITests(unittest.TestCase):
 
     def test_missing_key_keeps_manual_card_and_never_publishes(self):
         app = AppTest.from_file(str(ROOT / "app.py")).run()
+        app.sidebar.radio[0].set_value("Create Task").run()
         app.text_input(key="card_title").set_value("Manual draft").run()
         app.text_area(key="business_description").set_value(DESCRIPTION)
         with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
@@ -370,6 +372,7 @@ class AITests(unittest.TestCase):
     def test_successful_result_survives_rerun_during_spinner_cleanup(self):
         self.responses.append(response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0]))
         app = AppTest.from_file(str(ROOT / "app.py")).run()
+        app.sidebar.radio[0].set_value("Create Task").run()
         app.text_area(key="business_description").set_value(DESCRIPTION)
 
         @contextmanager
@@ -387,8 +390,8 @@ class AITests(unittest.TestCase):
             self.assertEqual(app.session_state["analysis"]["scoring"]["total_score"], 16)
             self.assertEqual(app.text_area(key="business_description").value, DESCRIPTION)
             self.assertEqual(app.session_state["analyzed_description"], DESCRIPTION)
-            self.assertTrue(any(metric.value == "16/100" and metric.delta == "Draft" for metric in app.metric))
-            self.assertTrue(any("Missing information:" in warning.value for warning in app.warning))
+            self.assertTrue(any(metric.value == "16/100" and metric.delta == "Черновик" for metric in app.metric))
+            self.assertTrue(any("Можно уточнить ещё" in caption.value for caption in app.caption))
             self.assertEqual(len(app.table), 1)
             for i, question in enumerate(app.session_state["analysis"]["questions"]):
                 self.assertEqual(app.text_area(key=f"answer_1_{i}").label, question["question"])
@@ -402,6 +405,7 @@ class AITests(unittest.TestCase):
         initial_response["missing_fields"].remove("users")
         self.responses.append(initial_response)
         app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
+        app.sidebar.radio[0].set_value("Create Task").run()
         app.text_area(key="business_description").set_value(DESCRIPTION)
         app.button(key="analyze").click().run()
         self.assertFalse(app.exception)
@@ -411,7 +415,7 @@ class AITests(unittest.TestCase):
         self.assertEqual(app.session_state["analysis"]["scoring"]["total_score"], 16)
         self.assertIn("users", app.session_state["analysis"]["missing_fields"])
         self.assertFalse(app.error)
-        self.assertTrue(any(item.value == "Clarification questions" for item in app.subheader))
+        self.assertTrue(any(item.value == "Уточним детали" for item in app.subheader))
         self.assertEqual(app.text_area(key="card_data_materials").value, "")
         self.assertGreaterEqual(len(app.session_state["analysis"]["questions"]), 3)
         self.assertLessEqual(len(app.session_state["analysis"]["questions"]), 5)
@@ -425,7 +429,7 @@ class AITests(unittest.TestCase):
                 answer += ". " + DETAILS["contact"]  # One answer clarifies users and contact.
             app.text_area(key=f"answer_1_{i}").set_value(answer)
         self.responses.append(response_for(improved, [16, 16, 12, 12, 7, 8, 7]))
-        next(button for button in app.button if button.label == "Update task with answers").click().run()
+        app.button(key="clarify").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state["analysis"]["scoring"]["total_score"], 78)
         self.assertEqual(app.session_state["previous_score"], 16)
@@ -462,11 +466,13 @@ class AITests(unittest.TestCase):
         self.assertEqual(scores, [100, 90, 78, 75, 55, 30])
         # The saved quality score is 78, even though every field is filled (checklist 100).
         target = next(expander for expander in app.expander if "online clothing store — 78" in expander.label)
-        target.text_input[0].set_value("Campus Coders")
-        target.text_input[1].set_value("Two weeks")
-        target.text_area[0].set_value("Analyze funnel events")
-        target.text_area[1].set_value("Clean data, compare segments, present findings")
-        target.button[0].click().run()
+        task_id = published["id"]
+        target.text_input(key=f"team_{task_id}").set_value("Campus Coders")
+        target.text_input(key=f"timeline_{task_id}").set_value("Two weeks")
+        target.text_area(key=f"idea_{task_id}").set_value("Analyze funnel events")
+        target.text_area(key=f"plan_{task_id}").set_value("Clean data, compare segments, present findings")
+        target.text_area(key=f"done_{task_id}").set_value("The business can inspect findings about checkout drop-off")
+        target.button(key=f"proposal_submit_{task_id}").click().run()
         proposal = storage.load_records("proposals")[-1]
         self.assertEqual(proposal["task_id"], published["id"])
         self.assertEqual(proposal["status"], "Pending")
