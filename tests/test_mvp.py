@@ -23,6 +23,9 @@ class TaskForgeTests(unittest.TestCase):
             shutil.copy(source, self.data / source.name)
         self.data_patch = patch.object(storage, "DATA_DIR", self.data)
         self.data_patch.start()
+        storage.save_records("tasks", [task for task in storage.load_records("tasks") if task["id"] in {f"task-{i}" for i in range(1, 6)}])
+        storage.save_records("teams", [team for team in storage.load_records("teams") if team["id"] in {f"team-{i}" for i in range(1, 6)}])
+        storage.save_records("proposals", [])
 
     def tearDown(self):
         self.data_patch.stop()
@@ -50,12 +53,12 @@ class TaskForgeTests(unittest.TestCase):
     def test_complete_ui_flow(self):
         app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=20).run()
         self.assertFalse(app.exception)
-        app.button[0].click().run()
+        app.button(key="publish").click().run()
         self.assertTrue(app.error)
         app.text_input[0].set_value("Test published task")
-        for field in app.text_area:
-            field.set_value("Example detail for the student team")
-        app.button[0].click().run()
+        for key, *_ in FIELDS:
+            app.text_area(key=f"card_{key}").set_value("Example detail for the student team")
+        app.button(key="publish").click().run()
         self.assertFalse(app.exception)
         self.assertTrue(app.success)
         published = storage.load_records("tasks")[-1]

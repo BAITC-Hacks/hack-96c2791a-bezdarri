@@ -1,17 +1,27 @@
 """Run with: python -m streamlit run app.py"""
 
 from urllib.parse import urlparse
+import logging
 
 import streamlit as st
 
-from services.scoring import FIELDS, calculate_readiness
+from services.ai import AIError, TASK_KEYS, analyze_task
+from services.scoring import FIELDS, task_readiness
 from services.storage import add_record, load_records, review_proposal, submit_proposal
 
 st.set_page_config(page_title="TaskForge", page_icon="🛠️", layout="wide")
 
+# Temporary local diagnostics: state transitions only, never prompts or credentials.
+logger = logging.getLogger("taskforge.ui")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+logger.propagate = False
+
 
 def show_readiness(task):
-    result = calculate_readiness(task)
+    result = task_readiness(task)
+    st.caption(result["source"])
     st.metric("Readiness score", f"{result['score']}/100", result["level"], delta_color="off")
     st.progress(result["score"] / 100)
     st.table(result["breakdown"])
@@ -20,24 +30,131 @@ def show_readiness(task):
         st.markdown("**Suggestions for increasing the score**")
         for suggestion in result["suggestions"]:
             st.write("• " + suggestion)
-    else:
+    elif not task.get("ai_analysis"):
         st.success("All readiness fields are filled in. Review the detail with the business contact.")
     return result
 
 
+def save_card_edit(key):
+    st.session_state.draft[key] = st.session_state[f"card_{key}"].strip()
+    st.session_state.confirm_publish = False
+
+
+def run_analysis(mode):
+    """Save results before spinner cleanup can yield to a queued widget rerun."""
+    state = st.session_state
+    logger.info("Analyze button triggered: mode=%s", mode)
+    description = state.get("business_description", "").strip()
+    if mode == "draft" and not description:
+        state.ai_error = "Enter a business problem first."
+        return
+    answers = list(state.get("answer_history", []))
+    if mode == "clarify":
+        new_answers = [{**q, "answer": state.get(f"answer_{state.analysis_version}_{i}", "").strip()}
+                       for i, q in enumerate(state.analysis["questions"])]
+        new_answers = [answer for answer in new_answers if answer["answer"]]
+        if not new_answers:
+            state.ai_error = "Answer at least one clarification question first."
+            return
+        answers.extend(new_answers)
+    source_description = description if mode == "draft" else state.get("analyzed_description", "")
+    current_card = None if mode == "draft" else dict(state.draft)
+    # Capture a session-owned object before the API call. Mutating this object does
+    # not yield to Streamlit, unlike accessing st.session_state after the call.
+    job = {"mode": mode, "description": description, "answers": answers}
+    state.analysis_job = job
+    with st.spinner("Analyzing the business brief…"):
+        try:
+            result = analyze_task(source_description, [] if mode == "draft" else answers, current_card, mode)
+        except AIError as error:
+            job["error"] = str(error)
+            logger.info("Analysis failed; preserving current draft and prior result")
+        else:
+            job["result"] = result
+            logger.info("Result stored in session_state job: questions=%s score=%s",
+                        len(result["questions"]), result["scoring"]["total_score"])
+
+
+def apply_analysis_result():
+    """Apply a completed request once, before any editable widgets are rendered."""
+    state = st.session_state
+    job = state.get("analysis_job", {})
+    if "error" in job:
+        state.ai_error = job["error"]
+        state.analysis_job = {}
+        return
+    if "result" not in job:
+        return
+    result, mode = job["result"], job["mode"]
+    previous = state.get("analysis")
+    state.previous_score = previous["scoring"]["total_score"] if previous and mode != "draft" else None
+    state.analysis = result
+    state.draft = dict(result["task"])
+    state.answer_history = [] if mode == "draft" else job["answers"]
+    if mode == "draft":
+        state.analyzed_description = job["description"]
+    state.analysis_version = state.get("analysis_version", 0) + 1
+    state.confirm_publish = False
+    state.ai_error = None
+    state.analysis_job = {}
+    logger.info("Result stored in session_state: version=%s questions=%s score=%s",
+                state.analysis_version, len(result["questions"]), result["scoring"]["total_score"])
+
+
 def create_task():
     st.header("Create Task")
-    st.caption("Readiness measures completion, not quality. Each non-empty field earns its points; context and need earn 10 each. A title is required to publish.")
-    task = {"title": st.text_input("Title").strip()}
-    labels = {"data_materials": "Data/materials", "contact": "Contact/interaction format"}
-    for key in ("context", "need", "users", "data_materials", "constraints", "expected_result", "success_criteria", "contact"):
-        task[key] = st.text_area(labels.get(key, key.replace("_", " ").capitalize())).strip()
-    result = show_readiness(task)
-    if st.button("Publish task", type="primary"):
+    state = st.session_state
+    if "draft" not in state:
+        state.draft = {key: "" for key in TASK_KEYS}
+    apply_analysis_result()
+    st.subheader("Quick AI draft")
+    st.caption("Describe the problem in your own words. AI uses only supplied facts; unknowns stay blank. Review every field before publishing.")
+    # Keep the draft across sidebar navigation; widget state alone is discarded by Streamlit.
+    if "business_description" not in state:
+        state.business_description = state.get("saved_description", "")
+    st.text_area("Business problem", key="business_description", placeholder="We run an online clothing store and many customers abandon their carts…",
+                 on_change=lambda: state.update(saved_description=state.business_description))
+    st.button("Analyze with AI", key="analyze", on_click=run_analysis, args=("draft",))
+    if state.get("ai_error"):
+        st.error(state.ai_error)
+    analysis = state.get("analysis")
+    logger.info("Rendering section reached: analysis_present=%s", analysis is not None)
+    if analysis:
+        st.subheader("Clarification questions")
+        with st.form(f"clarifications_{state.analysis_version}"):
+            for i, question in enumerate(analysis["questions"]):
+                st.text_area(question["question"], key=f"answer_{state.analysis_version}_{i}")
+            st.form_submit_button("Update task with answers", on_click=run_analysis, args=("clarify",))
+    st.subheader("Editable task card")
+    labels = {"title": "Title", "data_materials": "Data/materials", "contact": "Contact/interaction format"}
+    for key in ("title", "context", "need", "users", "data_materials", "constraints", "expected_result", "success_criteria", "contact"):
+        state[f"card_{key}"] = state.draft[key]
+        widget = st.text_input if key == "title" else st.text_area
+        widget(labels.get(key, key.replace("_", " ").capitalize()), key=f"card_{key}",
+               on_change=save_card_edit, args=(key,))
+    task = dict(state.draft)
+    st.button("Reanalyze edited card", key="rescore", on_click=run_analysis, args=("rescore",))
+    stale = bool(analysis and task != analysis["task"])
+    if analysis:
+        if state.get("previous_score") is not None:
+            before, after = state.previous_score, analysis["scoring"]["total_score"]
+            st.metric("Readiness improvement" if not stale else "Last assessed improvement", f"{before} → {after}", f"{after - before:+d} points")
+        if stale:
+            st.warning("The card has changed. The assessment below is for the previous version. Reanalyze the edited card before publishing.")
+        result = show_readiness({**analysis["task"], "ai_analysis": analysis})
+        confirmed = st.checkbox("I reviewed the task card and confirm its business facts.", key="confirm_publish")
+    else:
+        st.caption("You can also create a task manually. Until AI analysis succeeds, this is a completion checklist, not a quality score.")
+        result = show_readiness(task)
+        confirmed = True
+    if st.button("Publish task", key="publish", type="primary", disabled=stale or not confirmed):
         if not task["title"]:
             st.error("Enter a title before publishing.")
         else:
-            add_record("tasks", {**task, "readiness_score": result["score"], "readiness_level": result["level"]})
+            values = {**task, "readiness_score": result["score"], "readiness_level": result["level"]}
+            if analysis:
+                values["ai_analysis"] = analysis
+            add_record("tasks", values)
             st.success("Task published. Open Catalog to view it.")
 
 
@@ -68,12 +185,12 @@ def proposal_form(task_id):
 def catalog():
     st.header("Catalog")
     level = st.selectbox("Readiness level", ["All", "Draft", "Working", "Ready", "Priority"])
-    tasks = sorted(load_records("tasks"), key=lambda task: calculate_readiness(task)["score"], reverse=True)
-    tasks = [task for task in tasks if level == "All" or calculate_readiness(task)["level"] == level]
+    tasks = sorted(load_records("tasks"), key=lambda task: task_readiness(task)["score"], reverse=True)
+    tasks = [task for task in tasks if level == "All" or task_readiness(task)["level"] == level]
     if not tasks:
         st.info("No published tasks match this filter.")
     for task in tasks:
-        result = calculate_readiness(task)
+        result = task_readiness(task)
         with st.expander(f"{task['title']} — {result['score']}/100 · {result['level']}"):
             for key, label, _, _ in FIELDS:
                 st.markdown(f"**{label}**")

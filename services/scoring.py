@@ -37,3 +37,20 @@ def calculate_readiness(task):
     score = sum(row["Points"] for row in breakdown)
     return {"score": score, "level": readiness_level(score), "breakdown": breakdown,
             "missing": missing, "suggestions": suggestions}
+
+
+def task_readiness(task):
+    """Published AI scores are snapshots; older tasks retain checklist scoring."""
+    analysis = task.get("ai_analysis")
+    if not analysis:
+        return {**calculate_readiness(task), "source": "Completion checklist (not AI quality scoring)"}
+    scoring = analysis["scoring"]
+    labels = {key: label for key, label, *_ in FIELDS}
+    return {
+        "score": scoring["total_score"], "level": scoring["level"], "source": "AI quality assessment",
+        "breakdown": [{"Category": row["category"], "Points": row["score"],
+                       "Maximum": row["max_score"], "Reason": row["reason"],
+                       "Improvement": row["improvement"]} for row in scoring["breakdown"]],
+        "missing": [labels.get(key, key.capitalize()) for key in analysis["missing_fields"]],
+        "suggestions": [row["improvement"] for row in scoring["breakdown"]],
+    }
