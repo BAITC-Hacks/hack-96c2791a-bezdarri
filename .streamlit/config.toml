@@ -1,11 +1,13 @@
 [runner]
-# Finish the current request before processing a queued widget rerun.
 fastReruns = false
 
 [theme]
-base = "dark"
-primaryColor = "#8B9DFF"
-backgroundColor = "#0E1420"
-secondaryBackgroundColor = "#192334"
-textColor = "#E8EDF5"
+base = "light"
+primaryColor = "#5068DB"
+backgroundColor = "#F6F7FB"
+secondaryBackgroundColor = "#EDF0F7"
+textColor = "#16233B"
 font = "sans serif"
+
+[browser]
+gatherUsageStats = false

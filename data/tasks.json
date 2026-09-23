@@ -1,71 +1,170 @@
 [
   {
+    "title": "Отзывы, которые не останутся без ответа",
+    "context": "Демонстрационная сеть кофеен получает отзывы в нескольких каналах.",
+    "need": "Помочь управляющему вовремя замечать жалобы.",
+    "data_materials": "300 синтетических отзывов в CSV; бизнес передаёт файл на старте. Реальных данных клиентов нет.",
+    "expected_result": "Дашборд тем отзывов и срочные уведомления управляющему о негативных отзывах.",
+    "success_criteria": "На 30 размеченных примерах найти не менее 24 негативных отзывов; уведомление поступает за 60 секунд.",
+    "constraints": "Прототип за 2 недели. Только синтетические данные; отправка ответов после проверки человеком.",
+    "users": "Управляющие кофейнями: проверяют сигнал и связываются с гостем.",
+    "contact": "Демо-менеджер, manager@coffee.example",
+    "interaction_format": "Созвон по вторникам; обратная связь по критериям в течение 24 часов.",
+    "topic": "AI",
+    "required_skills": [
+      "Python",
+      "NLP",
+      "React"
+    ],
     "id": "task-1",
-    "title": "Reduce food waste at Maple Cafe",
-    "context": "A fictional campus cafe discards unsold sandwiches every afternoon.",
-    "need": "Help the manager plan daily sandwich quantities with less waste.",
-    "users": "Cafe manager and morning shift staff.",
-    "data_materials": "The synthetic brief assumes a sample CSV of daily sales and waste can be supplied at kickoff; no dataset is bundled.",
-    "constraints": "Two-week project; use synthetic data and free tools only.",
-    "expected_result": "A spreadsheet or dashboard recommending daily production quantities.",
-    "success_criteria": "Compare recommendations against a simple prior-week baseline on sample data and explain the waste tradeoffs.",
-    "contact": "Fictional cafe manager Alex, alex@maple.example; weekly 20-minute video check-in.",
+    "synthetic": true,
+    "published": true,
+    "original_description": "Хотим AI для анализа отзывов",
+    "created_at": "2026-09-11T08:00:00+00:00",
+    "confirmed_fields": [
+      "title",
+      "context",
+      "need",
+      "data_materials",
+      "expected_result",
+      "success_criteria",
+      "constraints",
+      "users",
+      "contact",
+      "interaction_format"
+    ],
     "readiness_score": 100,
     "readiness_level": "Priority"
   },
   {
-    "id": "task-2",
-    "title": "Make library room bookings easier",
-    "context": "A fictional community library manages study-room bookings by email.",
-    "need": "Reduce duplicate bookings and repetitive staff replies.",
-    "users": "Library visitors and front-desk staff.",
-    "data_materials": "Invented booking examples and room capacity descriptions will be prepared with the team.",
+    "title": "Онлайн-запись в библиотеку",
+    "context": "Демонстрационная библиотека записывает посетителей в учебные комнаты по почте.",
+    "need": "Убрать пересечения записей и повторные письма.",
+    "data_materials": "Синтетические комнаты и примеры записей; таблица доступна на старте.",
+    "expected_result": "Веб-прототип бронирования комнат и инструкция для администратора.",
+    "success_criteria": "На 10 тестовых сценариях не допускается двойное бронирование.",
     "constraints": "",
-    "expected_result": "A clickable booking prototype and a short staff workflow guide.",
-    "success_criteria": "",
-    "contact": "Fictional librarian Morgan, morgan@library.example; questions by email.",
-    "readiness_score": 75,
+    "users": "Посетители и администраторы библиотеки.",
+    "contact": "",
+    "interaction_format": "",
+    "topic": "Web",
+    "required_skills": [
+      "React",
+      "UX",
+      "JavaScript"
+    ],
+    "id": "task-2",
+    "synthetic": true,
+    "published": true,
+    "original_description": "В кафе остаётся еда. Есть CSV продаж за 3 месяца; хотим планировать закупки.",
+    "created_at": "2026-09-12T08:00:00+00:00",
+    "confirmed_fields": [
+      "title",
+      "context",
+      "need",
+      "data_materials",
+      "expected_result",
+      "success_criteria",
+      "users"
+    ],
+    "readiness_score": 80,
     "readiness_level": "Ready"
   },
   {
-    "id": "task-3",
-    "title": "Improve volunteer shift coordination",
-    "context": "A fictional neighborhood charity coordinates volunteer shifts in several chat groups.",
-    "need": "Give coordinators one place to see unfilled shifts.",
-    "users": "Volunteer coordinators and student volunteers.",
+    "title": "Доска смен для волонтёров",
+    "context": "Демонстрационный фонд координирует смены в разных чатах.",
+    "need": "Видеть незакрытые смены в одном месте.",
     "data_materials": "",
-    "constraints": "",
-    "expected_result": "A simple shift-board prototype using invented volunteers.",
+    "expected_result": "Доска смен с возможностью записаться.",
     "success_criteria": "",
-    "contact": "Fictional coordinator Sam, sam@charity.example; one kickoff call.",
-    "readiness_score": 55,
-    "readiness_level": "Working"
+    "constraints": "Срок 2 недели; только вымышленные участники.",
+    "users": "Координатор волонтёров.",
+    "contact": "coordinator@help.example",
+    "interaction_format": "",
+    "topic": "Automation",
+    "required_skills": [
+      "Python",
+      "SQL"
+    ],
+    "id": "task-3",
+    "synthetic": true,
+    "published": true,
+    "original_description": "Хотим сайт для записи в библиотеку",
+    "created_at": "2026-09-13T08:00:00+00:00",
+    "confirmed_fields": [
+      "title",
+      "context",
+      "need",
+      "expected_result",
+      "constraints",
+      "users",
+      "contact"
+    ],
+    "readiness_score": 60,
+    "readiness_level": "Workable"
   },
   {
-    "id": "task-4",
-    "title": "Understand bike shop customer feedback",
-    "context": "A fictional bike repair shop receives scattered feedback after repairs.",
-    "need": "Find out why some customers do not return.",
-    "users": "Shop owner and repair team.",
+    "title": "Почему клиенты не возвращаются?",
+    "context": "Демонстрационная веломастерская получает разрозненные отзывы после ремонта.",
+    "need": "Понять причины повторных обращений и оттока.",
     "data_materials": "",
-    "constraints": "",
     "expected_result": "",
     "success_criteria": "",
+    "constraints": "",
+    "users": "Владелец мастерской.",
     "contact": "",
+    "interaction_format": "",
+    "topic": "AI",
+    "required_skills": [
+      "NLP",
+      "Python"
+    ],
+    "id": "task-4",
+    "synthetic": true,
+    "published": true,
+    "original_description": "Координатор теряет заявки волонтёров в чатах. Нужна единая доска смен за 2 недели.",
+    "created_at": "2026-09-14T08:00:00+00:00",
+    "confirmed_fields": [
+      "title",
+      "context",
+      "need",
+      "users"
+    ],
     "readiness_score": 30,
     "readiness_level": "Draft"
   },
   {
-    "id": "task-5",
-    "title": "Track reusable packaging returns",
-    "context": "A fictional meal delivery startup lends reusable containers but tracks returns on paper.",
-    "need": "Show staff which containers are outstanding and when they were issued.",
-    "users": "Packing staff and delivery coordinators.",
-    "data_materials": "The team can generate 50 fictional container records from the described workflow.",
-    "constraints": "Three-week prototype; no real customer addresses or payment details.",
-    "expected_result": "A container checkout and return tracker with an overdue list.",
-    "success_criteria": "Record and return all 50 sample containers without duplicate identifiers; correctly flag overdue items.",
+    "title": "Вернуть упаковку в оборот",
+    "context": "Демонстрационный сервис доставки отмечает возврат контейнеров на бумаге.",
+    "need": "Видеть невозвращённые контейнеры и срок выдачи.",
+    "data_materials": "50 синтетических записей о контейнерах; генерация командой на старте.",
+    "expected_result": "Реестр выдачи и возврата с отчётом по просрочке.",
+    "success_criteria": "Пройти 50 тестовых операций без дубликатов; просроченные контейнеры определяются верно.",
+    "constraints": "3 недели; без адресов клиентов и платёжных данных.",
+    "users": "Упаковщики и координаторы доставки.",
     "contact": "",
+    "interaction_format": "",
+    "topic": "Data",
+    "required_skills": [
+      "Python",
+      "SQL",
+      "Data"
+    ],
+    "id": "task-5",
+    "synthetic": true,
+    "published": true,
+    "original_description": "Нужен учёт возвратной упаковки: 50 тестовых контейнеров, Python, срок 3 недели.",
+    "created_at": "2026-09-15T08:00:00+00:00",
+    "confirmed_fields": [
+      "title",
+      "context",
+      "need",
+      "data_materials",
+      "expected_result",
+      "success_criteria",
+      "constraints",
+      "users"
+    ],
     "readiness_score": 90,
     "readiness_level": "Priority"
   },
@@ -79,10 +178,15 @@
     "expected_result": "everyone in the dorm buys the drinks",
     "success_criteria": "x2 sells",
     "contact": "tg qotaqbas",
-    "readiness_score": 100,
-    "readiness_level": "Priority",
+    "readiness_score": 0,
+    "readiness_level": "Draft",
     "id": "02987853-f78e-4eb7-818c-3cfb6df17cff",
-    "created_at": "2026-09-23T09:35:50.223665+00:00"
+    "created_at": "2026-09-23T09:35:50.223665+00:00",
+    "interaction_format": "",
+    "confirmed_fields": [],
+    "topic": "AI",
+    "required_skills": [],
+    "published": true
   },
   {
     "title": "13 block shop",
@@ -94,182 +198,14 @@
     "expected_result": "everyone in the dorm buys the drinks",
     "success_criteria": "",
     "contact": "",
-    "readiness_score": 75,
-    "readiness_level": "Ready",
+    "readiness_score": 0,
+    "readiness_level": "Draft",
     "id": "6fd77252-42fb-469a-9251-f80aaab924c3",
-    "created_at": "2026-09-23T09:35:59.631991+00:00"
-  },
-  {
-    "title": "Improving Sales at 13 Block Shop 1111",
-    "context": "13 Block Shop is a drink shop located in a dormitory setting. The primary goal is to increase sales.",
-    "need": "There is a need to understand customer preferences and improve marketing strategies to boost sales.",
-    "data_materials": "123",
-    "expected_result": "An increase in sales volume and customer footfall at the shop.",
-    "success_criteria": "x2",
-    "constraints": "no limits",
-    "users": "dorm citizens",
-    "contact": "1234",
-    "readiness_score": 60,
-    "readiness_level": "Working",
-    "ai_analysis": {
-      "task": {
-        "title": "Improving Sales at 13 Block Shop 1111",
-        "context": "13 Block Shop is a drink shop located in a dormitory setting. The primary goal is to increase sales.",
-        "need": "There is a need to understand customer preferences and improve marketing strategies to boost sales.",
-        "data_materials": "123",
-        "expected_result": "An increase in sales volume and customer footfall at the shop.",
-        "success_criteria": "x2",
-        "constraints": "no limits",
-        "users": "dorm citizens",
-        "contact": "1234"
-      },
-      "missing_fields": [],
-      "questions": [],
-      "scoring": {
-        "breakdown": [
-          {
-            "category": "Context and need",
-            "score": 15,
-            "max_score": 20,
-            "reason": "Clear context provided, but more details on specific customer preferences would improve clarity.",
-            "improvement": "Specify customer preferences that need to be understood."
-          },
-          {
-            "category": "Data and materials",
-            "score": 0,
-            "max_score": 20,
-            "reason": "No specific data or analysis materials were detailed besides a placeholder (123).",
-            "improvement": "Provide details of relevant data or materials to be utilized."
-          },
-          {
-            "category": "Expected result",
-            "score": 10,
-            "max_score": 15,
-            "reason": "The expected result outlines an increase in sales and footfall, which is vague.",
-            "improvement": "Define specific metrics for what constitutes 'increased sales' and 'customer footfall'."
-          },
-          {
-            "category": "Success criteria",
-            "score": 15,
-            "max_score": 15,
-            "reason": "A specific target of doubling sales is provided, which is actionable.",
-            "improvement": "No improvement needed."
-          },
-          {
-            "category": "Constraints",
-            "score": 10,
-            "max_score": 10,
-            "reason": "Stated no limits on budget or resources, which provides clarity.",
-            "improvement": "No improvement needed."
-          },
-          {
-            "category": "Users",
-            "score": 10,
-            "max_score": 10,
-            "reason": "Identifies primary customers as 'dorm citizens', which is specific.",
-            "improvement": "No improvement needed."
-          },
-          {
-            "category": "Business contact and interaction format",
-            "score": 0,
-            "max_score": 10,
-            "reason": "Contact information provided needs description of interaction format.",
-            "improvement": "Clarify the interaction format with the contact."
-          }
-        ],
-        "total_score": 60,
-        "level": "Working"
-      }
-    },
-    "id": "652135d5-13e7-4d20-b470-4d2e396025e8",
-    "created_at": "2026-09-23T11:26:57.816104+00:00"
-  },
-  {
-    "title": "Sales Improvement Strategy for 13 Block Shop",
-    "context": "13 Block Shop is a drink shop looking to increase its sales.",
-    "need": "The business requires strategies to boost its sales figures.",
-    "data_materials": "a lotoot",
-    "expected_result": "dorm civ",
-    "success_criteria": "sales",
-    "constraints": "no",
-    "users": "20-21yo",
-    "contact": "",
-    "industry": "",
-    "readiness_score": 45,
-    "readiness_level": "Working",
-    "ai_analysis": {
-      "task": {
-        "title": "Sales Improvement Strategy for 13 Block Shop",
-        "context": "13 Block Shop is a drink shop looking to increase its sales.",
-        "need": "The business requires strategies to boost its sales figures.",
-        "data_materials": "a lotoot",
-        "expected_result": "dorm civ",
-        "success_criteria": "sales",
-        "constraints": "no",
-        "users": "20-21yo",
-        "contact": ""
-      },
-      "missing_fields": [
-        "contact"
-      ],
-      "questions": [],
-      "scoring": {
-        "breakdown": [
-          {
-            "category": "Context and need",
-            "score": 15,
-            "max_score": 20,
-            "reason": "The context is clear, but the need could be more specific about the factors affecting sales.",
-            "improvement": "Specify what challenges are currently hindering sales."
-          },
-          {
-            "category": "Data and materials",
-            "score": 5,
-            "max_score": 20,
-            "reason": "The provided data material 'a lotoot' is unclear and does not give a solid understanding of sales performance.",
-            "improvement": "Provide detailed sales data or market analysis."
-          },
-          {
-            "category": "Expected result",
-            "score": 5,
-            "max_score": 15,
-            "reason": "The expected result 'dorm civ' is ambiguous and lacks clarity on specific sales targets.",
-            "improvement": "Specify a concrete sales target or percentage increase desired."
-          },
-          {
-            "category": "Success criteria",
-            "score": 5,
-            "max_score": 15,
-            "reason": "Success is defined as 'sales' but needs a more quantitative measure.",
-            "improvement": "Outline specific metrics or KPIs to evaluate success."
-          },
-          {
-            "category": "Constraints",
-            "score": 10,
-            "max_score": 10,
-            "reason": "No constraints were mentioned, indicating flexibility in planning.",
-            "improvement": "N/A"
-          },
-          {
-            "category": "Users",
-            "score": 5,
-            "max_score": 10,
-            "reason": "The primary customer demographic is briefly identified, but not detailed in terms of behaviors or preferences.",
-            "improvement": "Elaborate on the target age group's preferences and buying habits."
-          },
-          {
-            "category": "Business contact and interaction format",
-            "score": 0,
-            "max_score": 10,
-            "reason": "No contact information provided.",
-            "improvement": "Identify a business contact for future communications."
-          }
-        ],
-        "total_score": 45,
-        "level": "Working"
-      }
-    },
-    "id": "6a93ddcc-827f-4694-90f3-94f8feea64ac",
-    "created_at": "2026-09-23T11:43:03.387917+00:00"
+    "created_at": "2026-09-23T09:35:59.631991+00:00",
+    "interaction_format": "",
+    "confirmed_fields": [],
+    "topic": "AI",
+    "required_skills": [],
+    "published": true
   }
 ]

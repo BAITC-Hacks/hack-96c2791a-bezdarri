@@ -1,38 +1,107 @@
 [
   {
-    "team_name": "1111",
-    "solution_idea": "sales",
-    "plan": "sales",
-    "estimated_time": "1min",
-    "prototype_url": "",
-    "team_id": "16817622-cfbf-4edc-a805-3bb27f7cfba8",
-    "task_id": "652135d5-13e7-4d20-b470-4d2e396025e8",
+    "id": "proposal-demo-1",
+    "task_id": "task-1",
+    "team_id": "team-1",
+    "team_name": "Campus Coders",
+    "solution_idea": "NLP-классификатор и панель управляющего",
+    "plan": "Подготовить выборку → классифицировать отзывы → подключить уведомления → проверить критерии",
+    "estimated_time": "2 недели",
+    "prototype_url": "https://example.com/prototype",
+    "definition_of_done": "Дашборд показывает темы; минимум 24 из 30 негативных отзывов найдены, уведомления приходят за 60 секунд.",
     "status": "Pending",
-    "id": "a6c61623-d4b1-4552-8915-c03cdec5b13c",
-    "created_at": "2026-09-23T11:28:09.534092+00:00"
+    "milestones": [],
+    "submission": null,
+    "review": null,
+    "agreement": {
+      "expected_result": "Дашборд тем отзывов и срочные уведомления управляющему о негативных отзывах.",
+      "success_criteria": "На 30 размеченных примерах найти не менее 24 негативных отзывов; уведомление поступает за 60 секунд."
+    },
+    "synthetic": true,
+    "created_at": "2026-09-18T09:00:00+00:00"
   },
   {
-    "team_name": "1234",
-    "solution_idea": "12345121",
-    "plan": "1234",
-    "estimated_time": "1234",
-    "prototype_url": "",
-    "team_id": "b42d066b-64e2-4cc9-9972-38889d0b6def",
-    "task_id": "652135d5-13e7-4d20-b470-4d2e396025e8",
+    "id": "proposal-demo-2",
+    "task_id": "task-1",
+    "team_id": "team-2",
+    "team_name": "Data Sprouts",
+    "solution_idea": "Еженедельный аналитический отчёт",
+    "plan": "Очистить тексты → выделить темы → собрать отчёт",
+    "estimated_time": "10 дней",
+    "prototype_url": "https://example.com/prototype",
+    "definition_of_done": "Бизнес получает еженедельный отчёт с основными темами.",
     "status": "Pending",
-    "id": "bf892b32-f098-453a-b12a-651998d0d45b",
-    "created_at": "2026-09-23T11:28:35.530454+00:00"
+    "milestones": [],
+    "submission": null,
+    "review": null,
+    "agreement": {
+      "expected_result": "Дашборд тем отзывов и срочные уведомления управляющему о негативных отзывах.",
+      "success_criteria": "На 30 размеченных примерах найти не менее 24 негативных отзывов; уведомление поступает за 60 секунд."
+    },
+    "synthetic": true,
+    "created_at": "2026-09-19T09:00:00+00:00"
   },
   {
-    "team_name": "12341234",
-    "solution_idea": "12345",
-    "plan": "12345",
-    "estimated_time": "1234",
-    "prototype_url": "",
-    "team_id": "02f5d232-436e-4e13-b449-e5d269e40bfb",
-    "task_id": "6fd77252-42fb-469a-9251-f80aaab924c3",
+    "id": "proposal-demo-3",
+    "task_id": "task-2",
+    "team_id": "team-3",
+    "team_name": "Design Hive",
+    "solution_idea": "Прототип записи в библиотеку",
+    "plan": "Интервью → макет → календарь → тестирование",
+    "estimated_time": "7 дней",
+    "prototype_url": "https://example.com/prototype",
+    "definition_of_done": "10 тестовых бронирований проходят без пересечений.",
     "status": "Pending",
-    "id": "5fa68e4e-61ea-4050-ac10-b46646e45cc0",
-    "created_at": "2026-09-23T11:29:00.266354+00:00"
+    "milestones": [],
+    "submission": null,
+    "review": null,
+    "agreement": {
+      "expected_result": "Веб-прототип бронирования комнат и инструкция для администратора.",
+      "success_criteria": "На 10 тестовых сценариях не допускается двойное бронирование."
+    },
+    "synthetic": true,
+    "created_at": "2026-09-20T09:00:00+00:00"
+  },
+  {
+    "id": "proposal-demo-4",
+    "task_id": "task-3",
+    "team_id": "team-4",
+    "team_name": "Process Pioneers",
+    "solution_idea": "Доска незакрытых смен",
+    "plan": "Согласовать статусы → собрать доску → проверить запись",
+    "estimated_time": "2 недели",
+    "prototype_url": "https://example.com/prototype",
+    "definition_of_done": "Координатор видит свободные смены, а студент может записаться.",
+    "status": "Pending",
+    "milestones": [],
+    "submission": null,
+    "review": null,
+    "agreement": {
+      "expected_result": "Доска смен с возможностью записаться.",
+      "success_criteria": ""
+    },
+    "synthetic": true,
+    "created_at": "2026-09-21T09:00:00+00:00"
+  },
+  {
+    "id": "proposal-demo-5",
+    "task_id": "task-4",
+    "team_id": "team-5",
+    "team_name": "Green Byte",
+    "solution_idea": "Сначала исследовать доступные отзывы",
+    "plan": "Уточнить источники → собрать тестовые примеры → согласовать критерии",
+    "estimated_time": "1 неделя",
+    "prototype_url": "https://example.com/prototype",
+    "definition_of_done": "Бизнес подтвердил источники отзывов и критерии будущего анализа.",
+    "status": "Pending",
+    "milestones": [],
+    "submission": null,
+    "review": null,
+    "agreement": {
+      "expected_result": "",
+      "success_criteria": ""
+    },
+    "synthetic": true,
+    "created_at": "2026-09-22T09:00:00+00:00"
   }
 ]
