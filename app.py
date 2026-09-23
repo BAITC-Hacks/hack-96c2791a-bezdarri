@@ -32,10 +32,9 @@ def show_readiness(task, *, prominent=False, previous_score=None, stale=False, s
         if prominent:
             st.subheader("Готовность задачи")
             st.caption("Насколько понятно команде, что нужно сделать.")
-            score_column, improvement_column = st.columns(2)
-            score_column.metric("Готовность", f"{result['score']}/100", status_label(result["level"]), delta_color="off")
+            st.metric("Готовность", f"{result['score']}/100", status_label(result["level"]), delta_color="off")
             if previous_score is not None:
-                improvement_column.metric(
+                st.metric(
                     "Изменение" if not stale else "Предыдущая оценка",
                     f"{previous_score} → {result['score']}",
                     f"{result['score'] - previous_score:+d} баллов",
