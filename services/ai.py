@@ -49,7 +49,7 @@ def object_schema(properties):
 SCHEMA = object_schema({
     "task": object_schema({key: {"type": ["string", "null"]} for key in TASK_KEYS}),
     "missing_fields": {"type": "array", "items": {"type": "string", "enum": TASK_KEYS}},
-    "questions": {"type": "array", "items": object_schema({
+    "questions": {"type": "array", "maxItems": 5, "items": object_schema({
         "field": {"type": "string", "enum": TASK_KEYS}, "question": {"type": "string"}})},
     "scoring": object_schema({
         "breakdown": {"type": "array", "items": object_schema({
@@ -70,17 +70,61 @@ Neither titles nor other generated fields need to be verbatim excerpts.
 Do not infer available datasets, tools, deadlines, contacts, quantified targets, or
 specific deliverables merely because they would be useful. Ask about them instead.
 Unknown fields must be null. Do not use a clarification QUESTION as a business fact.
+ABSENCE OF INFORMATION MUST NEVER BE INTERPRETED AS ABSENCE OF CONSTRAINTS.
+Apply this distinction to ALL categories: context/need, data/materials, expected
+result, success criteria, constraints, users, and business contact/interaction format.
+'Not mentioned' means UNKNOWN, never 'none', 'no limits', 'unrestricted', 'not needed',
+or 'not applicable'. Silence, a skipped answer, a blank card field, and 'I don't know'
+are not evidence that something does not exist or is unnecessary.
+When information about a category is absent, keep its task fields null/empty, award
+zero points for that category, and list the unknown fields in missing_fields.
+Examples: no constraints mentioned -> constraints=null, 0/10, missing;
+no data mentioned -> data_materials=null, 0/20, missing;
+no contact mentioned -> contact=null, 0/10, missing.
+Only record 'there are no constraints' (or another explicit absence) when the USER
+actually states it in their description, answers, or manual edits. Do not broaden
+'no technology restrictions' into 'no constraints': other limits remain unknown.
+An explicit absence is supplied information, not automatic full marks. Evaluate its
+scope and usefulness under the existing rubric. For example, 'we have no data' does
+not establish available materials, and 'we have no contact' does not supply a contact.
+Apply the same rules in draft, clarify, and rescore, including scoring explanations:
+never justify points by treating a missing fact as a confirmed absence.
 Never fill unknown fields with placeholders such as 'not specified', recommendations,
 or assumptions. For a cart-abandonment problem with no other details, data_materials,
 constraints, success_criteria, and contact must be null. Mentioning a business problem
 does not establish that analytics data exists or that a particular deliverable is wanted.
 The current card contains the user's edits and takes precedence over the description.
 For mode rescore, return the current card unchanged, including blank fields.
-For mode clarify, preserve current facts and use answers to fill or improve fields.
-Identify blank AND weak fields in missing_fields. When at least three fields need
-clarification, generate at least three distinct relevant questions. With fewer missing
-or weak fields, ask only the relevant questions; a complete card may have no questions.
-Ask about each unknown field (one question may not substitute for a different field).
+For mode clarify, use the original business description, ALL clarification answers,
+and the current editable card together. Preserve current facts, fill or improve fields
+using supplied answers, and recalculate the rubric scores from the updated card.
+Identify blank AND weak fields in missing_fields, but do not turn that list into a form.
+For mode clarify, return 0-5 new questions: there is NO minimum. Return zero questions
+when the answers sufficiently clarify the task; otherwise ask 1-5 targeted follow-ups
+only for remaining important gaps. Missing fields may remain even with zero questions.
+For other modes, generate 3-5 distinct, focused clarification questions when at least
+three fields need clarification. With fewer missing or weak fields, ask only useful
+questions rather than padding the list; a complete card may have none.
+NEVER return more than five questions in any mode.
+Choose and order questions by the likely readiness improvement from the information
+still missing: data/materials (20), context/need (20), expected result (15), success
+criteria (15), then constraints, users, and contact (10 each). Skip categories that
+are already sufficiently clear in the description, current card, or previous answers.
+Each question must refer to this business's actual problem, process, or intended use.
+Avoid generic field-label questions such as 'What data or materials will be used?',
+'What are the expected outcomes?', or 'Who are the users?'. For a cart-abandonment
+brief, useful questions, ONLY if unanswered, could include:
+- What behavioral or transaction data is available for customers who abandon checkout?
+- At which checkout stage, if known, do you see the largest drop-off?
+- What measurable reduction in cart abandonment would make this project successful?
+Adapt the questions to the supplied business; do not reuse ecommerce wording for an
+unrelated problem. Ask without presupposing that data, measurements, or tools exist.
+One concise question may clarify multiple closely related fields. Set its 'field' to
+the primary field; use the user's answer to update any supported related fields too.
+Do not bundle unrelated questions into one item to evade the five-question limit.
+Do not ask for a title if a concise title can be safely generated from supplied facts.
+Uncovered fields must remain missing and empty if unknown; questions need not cover
+every missing field. Never fill those gaps with assumptions or proposed answers.
 Score QUALITY AND COMPLETENESS using exactly the provided seven-category rubric.
 Empty categories get zero. Context and need each account for at most 10 of their 20.
 A vague mention earns at most one quarter of a category's maximum; partial specifics
@@ -112,7 +156,7 @@ def factual_literals(text):
     ))
 
 
-def validate_analysis(result, sources, current_task=None):
+def validate_analysis(result, sources, current_task=None, mode="draft"):
     """Check structure and obvious unsupported specifics while allowing paraphrases."""
     def require(condition, message="Invalid analysis structure or rubric"):
         if not condition:
@@ -121,6 +165,7 @@ def validate_analysis(result, sources, current_task=None):
     def nonempty(value):
         return isinstance(value, str) and bool(value.strip())
 
+    require(mode in ("draft", "clarify", "rescore"), "Invalid analysis mode")
     require(isinstance(result, dict) and set(result) == {"task", "missing_fields", "questions", "scoring"})
     task = result["task"]
     require(isinstance(task, dict) and set(task) == set(TASK_KEYS))
@@ -138,14 +183,14 @@ def validate_analysis(result, sources, current_task=None):
     missing = list(dict.fromkeys(missing + [key for key in TASK_KEYS if not task[key]]))
     result["missing_fields"] = missing
     questions = result["questions"]
-    require(isinstance(questions, list) and len(questions) >= min(3, len(missing)),
+    minimum_questions = 0 if mode == "clarify" else min(3, len(missing))
+    require(isinstance(questions, list) and len(questions) >= minimum_questions,
             "Too few clarification questions for the missing or weak fields")
+    require(len(questions) <= 5, "More than five clarification questions")
     for question in questions:
         require(isinstance(question, dict) and set(question) == {"field", "question"})
         require(question["field"] in TASK_KEYS and nonempty(question["question"]))
     require(len({q["question"].strip().casefold() for q in questions}) == len(questions))
-    require(all(any(q["field"] == key for q in questions) for key in TASK_KEYS if not task[key]),
-            "Clarification questions do not cover every blank task field")
     scoring = result["scoring"]
     require(isinstance(scoring, dict) and set(scoring) == {"total_score", "level", "breakdown"})
     rows = scoring["breakdown"]
@@ -195,7 +240,7 @@ def analyze_task(description, answers=None, current_task=None, mode="draft"):
             raise ValueError("No complete response")
         logging.getLogger("taskforge.ui").info("AI response received")
         result = validate_analysis(json.loads(response.output_text), sources,
-                                   current_task if mode == "rescore" else None)
+                                   current_task if mode == "rescore" else None, mode=mode)
         logging.getLogger("taskforge.ui").info("Validation succeeded: questions=%s score=%s",
                                                len(result["questions"]), result["scoring"]["total_score"])
         return result

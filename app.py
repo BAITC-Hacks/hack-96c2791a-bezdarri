@@ -1,6 +1,7 @@
 """Run with: python -m streamlit run app.py"""
 
 from urllib.parse import urlparse
+from html import escape
 import logging
 
 import streamlit as st
@@ -11,6 +12,32 @@ from services.storage import add_record, load_records, review_proposal, submit_p
 
 st.set_page_config(page_title="TaskForge", page_icon="🛠️", layout="wide")
 
+# Presentation only: all user-supplied text in HTML cards is escaped below.
+st.markdown("""
+<style>
+    .block-container { max-width: 1180px; padding-top: 2rem; padding-bottom: 2rem; }
+    h1 { letter-spacing: -0.04em; }
+    h2, h3 { letter-spacing: -0.02em; }
+    [data-testid="stMetricValue"] { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; }
+    [data-testid="stMetricDelta"] { font-size: 1rem; }
+    .tf-card-header { display: flex; justify-content: space-between; gap: 1rem;
+                      align-items: flex-start; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .tf-card-title { margin: 0 0 0.6rem; padding: 0; font-size: 1.25rem; }
+    .tf-badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px;
+                background: #253044; color: #e2e8f0; font-size: 0.8rem; }
+    .tf-score { padding: 0.5rem 0.9rem; border-left: 3px solid; min-width: 135px; }
+    .tf-score strong { font-size: 1.9rem; line-height: 1.2; }
+    .tf-score small { font-size: 0.85rem; }
+    .tf-score span { display: block; font-weight: 600; }
+    .tf-draft { border-color: #a8b3c7; color: #cbd5e1; }
+    .tf-working { border-color: #fbbf24; color: #fcd34d; }
+    .tf-ready { border-color: #34d399; color: #6ee7b7; }
+    .tf-priority { border-color: #a78bfa; color: #c4b5fd; }
+    .tf-flow { padding: 0.8rem 1rem; border: 1px solid #334155; border-radius: 0.6rem;
+               background: #171f2e; color: #e2e8f0; margin-bottom: 1rem; }
+</style>
+""", unsafe_allow_html=True)
+
 # Temporary local diagnostics: state transitions only, never prompts or credentials.
 logger = logging.getLogger("taskforge.ui")
 logger.setLevel(logging.INFO)
@@ -19,17 +46,44 @@ if not logger.handlers:
 logger.propagate = False
 
 
-def show_readiness(task):
+def show_readiness(task, *, prominent=False, previous_score=None, stale=False, summary_container=None):
     result = task_readiness(task)
-    st.caption(result["source"])
-    st.metric("Readiness score", f"{result['score']}/100", result["level"], delta_color="off")
-    st.progress(result["score"] / 100)
+    if prominent:
+        with summary_container if summary_container is not None else st.container(border=True):
+            st.subheader("Task readiness")
+            score_column, improvement_column = st.columns(2)
+            score_column.metric("Readiness score", f"{result['score']}/100", result["level"], delta_color="off")
+            if previous_score is not None:
+                improvement_column.metric(
+                    "Readiness improvement" if not stale else "Last assessed improvement",
+                    f"{previous_score} → {result['score']}",
+                    f"{result['score'] - previous_score:+d} points",
+                )
+            st.progress(result["score"] / 100)
+            st.caption(result["source"])
+    else:
+        st.caption(result["source"])
+        st.metric("Readiness score", f"{result['score']}/100", result["level"], delta_color="off")
+        st.progress(result["score"] / 100)
     st.table(result["breakdown"])
     if result["missing"]:
         st.warning("Missing information: " + ", ".join(result["missing"]))
-        st.markdown("**Suggestions for increasing the score**")
-        for suggestion in result["suggestions"]:
-            st.write("• " + suggestion)
+        suggestions = result["suggestions"]
+        if task.get("ai_analysis"):
+            # Display only categories with room to earn points; stored scores and
+            # explanations stay unchanged, including full-score categories.
+            improvements = sorted(result["breakdown"],
+                                  key=lambda row: row["Maximum"] - row["Points"], reverse=True)
+            suggestions = [row["Improvement"] for row in improvements
+                           if row["Points"] < row["Maximum"] and row["Improvement"].strip()]
+        suggestions = [suggestion for suggestion in suggestions
+                       if suggestion.strip().rstrip(".! ").casefold() not in
+                       {"no improvement needed", "no improvements needed", "no improvement necessary",
+                        "no action needed", "no changes needed", "none", "n/a"}]
+        if suggestions:
+            st.markdown("**Suggestions for increasing the score**")
+            for suggestion in suggestions:
+                st.write("• " + suggestion)
     elif not task.get("ai_analysis"):
         st.success("All readiness fields are filled in. Review the detail with the business contact.")
     return result
@@ -103,20 +157,25 @@ def apply_analysis_result():
 
 def create_task():
     st.header("Create Task")
+    st.markdown('<div class="tf-flow"><b>01 Describe</b> &nbsp; → &nbsp; '
+                '<b>02 Clarify</b> &nbsp; → &nbsp; <b>03 Improve</b> &nbsp; → &nbsp; '
+                '<b>04 Publish</b></div>', unsafe_allow_html=True)
     state = st.session_state
     if "draft" not in state:
         state.draft = {key: "" for key in TASK_KEYS}
     apply_analysis_result()
-    st.subheader("Quick AI draft")
+    st.subheader("Describe your business challenge")
     st.caption("Describe the problem in your own words. AI uses only supplied facts; unknowns stay blank. Review every field before publishing.")
     # Keep the draft across sidebar navigation; widget state alone is discarded by Streamlit.
     if "business_description" not in state:
         state.business_description = state.get("saved_description", "")
     st.text_area("Business problem", key="business_description", placeholder="We run an online clothing store and many customers abandon their carts…",
                  on_change=lambda: state.update(saved_description=state.business_description))
-    st.button("Analyze with AI", key="analyze", on_click=run_analysis, args=("draft",))
+    st.button("Analyze with AI", key="analyze", type="primary", on_click=run_analysis, args=("draft",))
     if state.get("ai_error"):
         st.error(state.ai_error)
+    # Render the existing score summary above the long editable card.
+    readiness_summary = st.container(border=True)
     analysis = state.get("analysis")
     logger.info("Rendering section reached: analysis_present=%s", analysis is not None)
     if analysis:
@@ -133,25 +192,28 @@ def create_task():
         widget(labels.get(key, key.replace("_", " ").capitalize()), key=f"card_{key}",
                on_change=save_card_edit, args=(key,))
     task = dict(state.draft)
+    industry = st.text_input("Industry (optional)", key="task_industry",
+                             placeholder="e.g. Retail, Education, Healthcare",
+                             help="Used only to organize the catalog. Blank industries appear as Other.")
     st.button("Reanalyze edited card", key="rescore", on_click=run_analysis, args=("rescore",))
     stale = bool(analysis and task != analysis["task"])
     if analysis:
-        if state.get("previous_score") is not None:
-            before, after = state.previous_score, analysis["scoring"]["total_score"]
-            st.metric("Readiness improvement" if not stale else "Last assessed improvement", f"{before} → {after}", f"{after - before:+d} points")
         if stale:
             st.warning("The card has changed. The assessment below is for the previous version. Reanalyze the edited card before publishing.")
-        result = show_readiness({**analysis["task"], "ai_analysis": analysis})
+        result = show_readiness({**analysis["task"], "ai_analysis": analysis}, prominent=True,
+                                previous_score=state.get("previous_score"), stale=stale,
+                                summary_container=readiness_summary)
         confirmed = st.checkbox("I reviewed the task card and confirm its business facts.", key="confirm_publish")
     else:
         st.caption("You can also create a task manually. Until AI analysis succeeds, this is a completion checklist, not a quality score.")
-        result = show_readiness(task)
+        result = show_readiness(task, prominent=True, summary_container=readiness_summary)
         confirmed = True
     if st.button("Publish task", key="publish", type="primary", disabled=stale or not confirmed):
         if not task["title"]:
             st.error("Enter a title before publishing.")
         else:
-            values = {**task, "readiness_score": result["score"], "readiness_level": result["level"]}
+            values = {**task, "industry": industry.strip(),
+                      "readiness_score": result["score"], "readiness_level": result["level"]}
             if analysis:
                 values["ai_analysis"] = analysis
             add_record("tasks", values)
@@ -165,7 +227,7 @@ def proposal_form(task_id):
             "team_name": st.text_input("Team name"),
             "solution_idea": st.text_area("Solution idea"),
             "plan": st.text_area("Plan"),
-            "estimated_time": st.text_input("Estimated time", placeholder="e.g. 2 weeks, 20 hours"),
+            "estimated_time": st.text_input("Estimated timeline", placeholder="e.g. 2 weeks, 20 hours"),
             "prototype_url": st.text_input("Prototype URL (optional)", placeholder="https://example.com/demo"),
         }
         submitted = st.form_submit_button("Submit proposal")
@@ -182,21 +244,47 @@ def proposal_form(task_id):
         st.success("Proposal submitted as Pending. The business will review it manually.")
 
 
+def task_industry(task):
+    """Older JSON records need no migration to appear in the catalog."""
+    industry = task.get("industry")
+    return industry.strip() if isinstance(industry, str) and industry.strip() else "Other"
+
+
 def catalog():
     st.header("Catalog")
-    level = st.selectbox("Readiness level", ["All", "Draft", "Working", "Ready", "Priority"])
-    tasks = sorted(load_records("tasks"), key=lambda task: task_readiness(task)["score"], reverse=True)
-    tasks = [task for task in tasks if level == "All" or task_readiness(task)["level"] == level]
+    st.caption("Explore business challenges, find your team's fit, and propose a solution. Tasks at every readiness level are welcome.")
+    published = load_records("tasks")
+    topic_column, readiness_column, sort_column = st.columns(3)
+    industries = sorted({task_industry(task) for task in published}, key=str.casefold)
+    topic = topic_column.selectbox("Topic / Industry", ["All"] + [name for name in industries if name != "All"], key="catalog_industry")
+    level = readiness_column.selectbox("Readiness level", ["All", "Draft", "Working", "Ready", "Priority"], key="catalog_readiness")
+    order = sort_column.selectbox("Sort", ["Highest readiness", "Lowest readiness"], key="catalog_sort")
+    tasks = sorted(published, key=lambda task: task_readiness(task)["score"], reverse=order == "Highest readiness")
+    tasks = [task for task in tasks
+             if (level == "All" or task_readiness(task)["level"] == level)
+             and (topic == "All" or task_industry(task) == topic)]
+    st.caption(f"{len(tasks)} of {len(published)} published challenges")
     if not tasks:
         st.info("No published tasks match this filter.")
     for task in tasks:
         result = task_readiness(task)
-        with st.expander(f"{task['title']} — {result['score']}/100 · {result['level']}"):
-            for key, label, _, _ in FIELDS:
-                st.markdown(f"**{label}**")
-                st.write(task.get(key) or "Not provided")
-            show_readiness(task)
-            proposal_form(task["id"])
+        with st.container(border=True):
+            st.markdown(
+                f'<div class="tf-card-header"><div><h3 class="tf-card-title">{escape(task["title"])}</h3>'
+                f'<span class="tf-badge">{escape(task_industry(task))}</span></div>'
+                f'<div class="tf-score tf-{result["level"].lower()}"><strong>{result["score"]}</strong>'
+                f'<small> / 100</small><span>{result["level"]}</span></div></div>',
+                unsafe_allow_html=True,
+            )
+            preview = " ".join((task.get("need") or task.get("context") or "Business details coming soon.").split())
+            st.write(preview if len(preview) <= 220 else preview[:217] + "…")
+            with st.expander(f"{task['title']} — {result['score']}/100 · {result['level']}"):
+                st.caption("Full brief and team proposal")
+                for key, label, _, _ in FIELDS:
+                    st.markdown(f"**{label}**")
+                    st.write(task.get(key) or "Not provided")
+                show_readiness(task)
+                proposal_form(task["id"])
     teams = load_records("teams")
     with st.expander(f"Student teams ({len(teams)})"):
         for team in teams:
@@ -206,20 +294,25 @@ def catalog():
 
 def dashboard():
     st.header("Business Dashboard")
+    st.caption("Your proposal review workspace")
     st.caption("Every decision is manual. Accepting a proposal does not reject or select any other team. You can change a decision using the buttons below.")
     tasks = load_records("tasks")
     proposals = load_records("proposals")
+    task_count, pending_count, accepted_count = st.columns(3)
+    task_count.metric("Published challenges", len(tasks))
+    pending_count.metric("Awaiting review", sum(proposal["status"] == "Pending" for proposal in proposals))
+    accepted_count.metric("Accepted proposals", sum(proposal["status"] == "Accepted" for proposal in proposals))
     if not tasks:
         st.info("Publish a task to start receiving proposals.")
     for task in tasks:
         st.subheader(task["title"])
         matches = [proposal for proposal in proposals if proposal["task_id"] == task["id"]]
         if not matches:
-            st.info("No proposals yet.")
+            st.caption("No proposals yet.")
         for proposal in matches:
             with st.container(border=True):
                 st.markdown(f"**{proposal['team_name']} · {proposal['status']}**")
-                for key, label in (("solution_idea", "Solution idea"), ("plan", "Plan"), ("estimated_time", "Estimated time"), ("prototype_url", "Prototype URL")):
+                for key, label in (("solution_idea", "Solution idea"), ("plan", "Plan"), ("estimated_time", "Estimated timeline"), ("prototype_url", "Prototype URL")):
                     st.markdown(f"**{label}**")
                     st.write(proposal.get(key) or "Not provided")
                 accept, reject = st.columns(2)
@@ -232,7 +325,9 @@ def dashboard():
 
 
 st.title("TaskForge")
-st.write("Turn business problems into student-ready tasks.")
+st.write("From vague business needs to student-ready challenges.")
+st.sidebar.title("TaskForge")
+st.sidebar.caption("Build a brief. Find a team. Review proposals.")
 page = st.sidebar.radio("Navigation", ["Create Task", "Catalog", "Business Dashboard"])
 st.sidebar.caption("Draft: 0–39 · Working: 40–69 · Ready: 70–89 · Priority: 90–100")
 try:

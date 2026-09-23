@@ -36,7 +36,18 @@ DETAILS = {
 def response_for(task, scores):
     missing = [key for key, value in task.items() if not value]
     targets = missing or ["constraints", "success_criteria", "contact"]
-    questions = [{"field": key, "question": f"What specific {key.replace('_', ' ')} can you provide or clarify?"} for key in targets]
+    question_text = {
+        "title": "Which business problem should the student project focus on?",
+        "context": "At which checkout stage do clothing-store customers leave, if known?",
+        "need": "What does the store need to learn about abandoned carts to decide its next steps?",
+        "data_materials": "What behavioral or transaction data is available for shoppers who abandon checkout?",
+        "expected_result": "What should students deliver to help your store act on the checkout findings?",
+        "success_criteria": "What measurable reduction in cart abandonment would make this project successful?",
+        "constraints": "What deadline or customer-data privacy limits apply to this checkout analysis?",
+        "users": "Who will use the checkout findings, and how can students contact that team?",
+        "contact": "How can students contact your store to discuss checkout findings?",
+    }
+    questions = [{"field": key, "question": question_text[key]} for key in targets[:5]]
     total = sum(scores)
     return {"task": deepcopy(task), "missing_fields": missing, "questions": questions,
             "scoring": {"total_score": total, "level": readiness_level(total), "breakdown": [
@@ -130,6 +141,62 @@ class AITests(unittest.TestCase):
         self.assertGreaterEqual(len(result["questions"]), 3)
         self.assertEqual(result["task"]["data_materials"], "")
 
+    def test_all_unknown_categories_stay_missing_and_score_zero(self):
+        full_task = {**INITIAL, **DETAILS}
+        for mode in ("draft", "clarify", "rescore"):
+            for index, (category, maximum, fields) in enumerate(ai.RUBRIC):
+                for blank in (None, "", "   "):
+                    with self.subTest(mode=mode, category=category, blank=blank):
+                        task = {**full_task, **{field: blank for field in fields}}
+                        scores = [row[1] for row in ai.RUBRIC]
+                        scores[index] = 0
+                        response = response_for(task, scores)
+                        # The normalizer must recover missing fields, not infer 'none'.
+                        response["missing_fields"] = []
+                        sources = [value for value in task.values() if value and value.strip()]
+                        result = ai.validate_analysis(response, sources, mode=mode)
+                        for field in fields:
+                            self.assertEqual(result["task"][field], "")
+                            self.assertIn(field, result["missing_fields"])
+                        self.assertEqual(result["scoring"]["breakdown"][index]["score"], 0)
+                        self.assertEqual(result["scoring"]["total_score"], 100 - maximum)
+
+                        # Even with consistent arithmetic, missing facts cannot earn points.
+                        bad = deepcopy(result)
+                        bad["scoring"]["breakdown"][index]["score"] = maximum
+                        bad["scoring"]["total_score"] = 100
+                        bad["scoring"]["level"] = "Priority"
+                        with self.assertRaises(ValueError):
+                            ai.validate_analysis(bad, sources, mode=mode)
+
+    def test_explicit_no_constraints_is_supplied_information(self):
+        statement = "There are no constraints."
+        task = {**INITIAL, "constraints": statement}
+        self.responses.append(response_for(task, [16, 0, 0, 0, 5, 0, 0]))
+        result = ai.analyze_task(DESCRIPTION + " " + statement)
+        self.assertEqual(result["task"]["constraints"], statement)
+        self.assertNotIn("constraints", result["missing_fields"])
+        row = next(row for row in result["scoring"]["breakdown"] if row["category"] == "Constraints")
+        self.assertEqual(row["score"], 5)  # Explicit absence need not receive full marks.
+
+    def test_absence_policy_is_sent_in_every_analysis_mode(self):
+        # Check the prompt contract sent to OpenAI; mocked responses cannot prove
+        # a live model's semantic compliance with this instruction.
+        for mode in ("draft", "clarify", "rescore"):
+            with self.subTest(mode=mode):
+                response = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+                self.responses.append(response)
+                result = ai.analyze_task(DESCRIPTION, current_task=INITIAL, mode=mode)
+                instructions = self.requests[-1]["instructions"]
+                self.assertIn("ABSENCE OF INFORMATION MUST NEVER BE INTERPRETED AS ABSENCE OF CONSTRAINTS.", instructions)
+                self.assertIn("'Not mentioned' means UNKNOWN", instructions)
+                self.assertIn("no constraints mentioned -> constraints=null, 0/10, missing", instructions)
+                self.assertIn("no data mentioned -> data_materials=null, 0/20, missing", instructions)
+                self.assertIn("no contact mentioned -> contact=null, 0/10, missing", instructions)
+                for field in ("constraints", "data_materials", "contact"):
+                    self.assertEqual(result["task"][field], "")
+                    self.assertIn(field, result["missing_fields"])
+
     def test_unsupported_specifics_are_rejected_but_supplied_ones_allow_rewording(self):
         for key, value in [("contact", "Email alex@invented.example"),
                            ("data_materials", "Download at https://invented.example/data"),
@@ -151,6 +218,112 @@ class AITests(unittest.TestCase):
         result = response_for(task, [16, 16, 12, 12, 7, 8, 0])
         self.assertEqual(len(result["questions"]), 1)
         ai.validate_analysis(result, list(task.values()))
+
+    def test_three_to_five_questions_allow_uncovered_missing_fields(self):
+        for count in (3, 4, 5):
+            with self.subTest(count=count):
+                response = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+                response["questions"] = response["questions"][:count]
+                result = ai.validate_analysis(response, [DESCRIPTION])
+                self.assertEqual(len(result["questions"]), count)
+                self.assertIn("contact", result["missing_fields"])
+                self.assertEqual(result["task"]["contact"], "")
+                self.assertNotIn("contact", [question["field"] for question in result["questions"]])
+
+    def test_question_limits_reject_two_or_six_for_an_incomplete_brief(self):
+        response = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+        response["questions"] = response["questions"][:2]
+        with self.assertRaisesRegex(ValueError, "Too few"):
+            ai.validate_analysis(response, [DESCRIPTION])
+        response = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+        response["questions"].append({"field": "contact", "question": "How can students reach the store manager?"})
+        with self.assertRaisesRegex(ValueError, "More than five"):
+            ai.validate_analysis(response, [DESCRIPTION])
+
+    def test_draft_rejects_fewer_than_three_questions_with_significant_gaps(self):
+        for count in (0, 1, 2):
+            with self.subTest(count=count):
+                response = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+                response["questions"] = response["questions"][:count]
+                with self.assertRaisesRegex(ValueError, "Too few"):
+                    ai.validate_analysis(response, [DESCRIPTION], mode="draft")
+
+    def test_clarify_accepts_zero_one_or_two_questions_despite_remaining_gaps(self):
+        for count in (0, 1, 2):
+            with self.subTest(count=count):
+                response = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+                response["questions"] = response["questions"][:count]
+                result = ai.validate_analysis(response, [DESCRIPTION], mode="clarify")
+                self.assertEqual(len(result["questions"]), count)
+                self.assertGreaterEqual(len(result["missing_fields"]), 3)
+                self.assertEqual(result["scoring"]["total_score"], 16)
+
+    def test_clarify_keeps_question_types_maximum_and_score_validation(self):
+        good = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
+        invalid = []
+        bad = deepcopy(good); bad["questions"] = None; invalid.append(bad)
+        bad = deepcopy(good); bad["questions"].append({"field": "contact", "question": "How can students reach the store?"}); invalid.append(bad)
+        bad = deepcopy(good); bad["questions"] = []; bad["scoring"]["total_score"] = 101; invalid.append(bad)
+        bad = deepcopy(good); bad["questions"] = []; bad["scoring"]["breakdown"][0]["score"] = 21; invalid.append(bad)
+        bad = deepcopy(good); bad["questions"] = []; bad["scoring"]["breakdown"][0]["max_score"] = 30; invalid.append(bad)
+        bad = deepcopy(good); bad["questions"] = []; bad["scoring"]["total_score"] = 15; invalid.append(bad)
+        bad = deepcopy(good); bad["questions"] = []; bad["task"]["context"] = 123; invalid.append(bad)
+        bad = deepcopy(good); bad["questions"] = []; bad["task"]["contact"] = "invented@store.example"; invalid.append(bad)
+        for response in invalid:
+            with self.subTest(response=response), self.assertRaises(ValueError):
+                ai.validate_analysis(response, [DESCRIPTION], mode="clarify")
+
+    def test_clarify_uses_original_description_all_answers_and_current_card(self):
+        self.responses.append(response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0]))
+        app = AppTest.from_file(str(ROOT / "app.py")).run()
+        app.text_area(key="business_description").set_value(DESCRIPTION)
+        app.button(key="analyze").click().run()
+        app.text_area(key="card_constraints").set_value(DETAILS["constraints"]).run()
+        current_card = deepcopy(app.session_state["draft"])
+        question = app.session_state["analysis"]["questions"][0]
+        self.assertEqual(question["field"], "data_materials")
+        app.text_area(key="answer_1_0").set_value(DETAILS["data_materials"])
+        updated = {**current_card, "data_materials": DETAILS["data_materials"]}
+        first = response_for(updated, [16, 16, 0, 0, 7, 0, 0])
+        first["questions"] = first["questions"][:1]
+        self.responses.append(first)
+        next(button for button in app.button if button.label == "Update task with answers").click().run()
+        self.assertFalse(app.error)
+        payload = json.loads(self.requests[-1]["input"])
+        self.assertEqual(payload["mode"], "clarify")
+        self.assertEqual(payload["description"], DESCRIPTION)
+        self.assertEqual(payload["current_card"], current_card)
+        self.assertEqual(payload["answers"], [{**question, "answer": DETAILS["data_materials"]}])
+        first_answers = deepcopy(payload["answers"])
+
+        # A second round must retain earlier answers and use the latest manual card.
+        app.text_area(key="card_contact").set_value(DETAILS["contact"]).run()
+        app.text_area(key="business_description").set_value("Unsubmitted replacement description").run()
+        current_card = deepcopy(app.session_state["draft"])
+        question = app.session_state["analysis"]["questions"][0]
+        app.text_area(key="answer_2_0").set_value(DETAILS[question["field"]])
+        updated = {**current_card, question["field"]: DETAILS[question["field"]]}
+        second = response_for(updated, [16, 16, 12, 0, 7, 0, 7])
+        second["questions"] = []
+        self.responses.append(second)
+        next(button for button in app.button if button.label == "Update task with answers").click().run()
+        self.assertFalse(app.exception)
+        self.assertFalse(app.error)
+        payload = json.loads(self.requests[-1]["input"])
+        self.assertEqual(payload["description"], DESCRIPTION)
+        self.assertEqual(payload["current_card"], current_card)
+        self.assertEqual(payload["answers"], first_answers + [{**question, "answer": DETAILS[question["field"]]}])
+        self.assertEqual(app.session_state["analysis"]["questions"], [])
+        self.assertEqual(app.session_state["analysis"]["scoring"]["total_score"], 58)
+        self.assertEqual(app.session_state["draft"], updated)
+
+    def test_question_minimum_also_applies_to_weak_nonempty_fields(self):
+        task = {**INITIAL, **DETAILS}
+        response = response_for(task, [16, 16, 12, 12, 7, 8, 7])
+        response["missing_fields"] = ["data_materials", "expected_result", "success_criteria"]
+        response["questions"] = response["questions"][:2]
+        with self.assertRaisesRegex(ValueError, "Too few"):
+            ai.validate_analysis(response, list(task.values()))
 
     def test_rescore_still_preserves_manual_edits(self):
         result = response_for(INITIAL, [16, 0, 0, 0, 0, 0, 0])
@@ -241,12 +414,16 @@ class AITests(unittest.TestCase):
         self.assertTrue(any(item.value == "Clarification questions" for item in app.subheader))
         self.assertEqual(app.text_area(key="card_data_materials").value, "")
         self.assertGreaterEqual(len(app.session_state["analysis"]["questions"]), 3)
+        self.assertLessEqual(len(app.session_state["analysis"]["questions"]), 5)
         self.assertEqual(len(storage.load_records("tasks")), 5)
         self.assertTrue(app.button(key="publish").disabled)
 
         improved = {**INITIAL, **DETAILS}
         for i, question in enumerate(app.session_state["analysis"]["questions"]):
-            app.text_area(key=f"answer_1_{i}").set_value(DETAILS[question["field"]])
+            answer = DETAILS[question["field"]]
+            if question["field"] == "users":
+                answer += ". " + DETAILS["contact"]  # One answer clarifies users and contact.
+            app.text_area(key=f"answer_1_{i}").set_value(answer)
         self.responses.append(response_for(improved, [16, 16, 12, 12, 7, 8, 7]))
         next(button for button in app.button if button.label == "Update task with answers").click().run()
         self.assertFalse(app.exception)
@@ -254,7 +431,8 @@ class AITests(unittest.TestCase):
         self.assertEqual(app.session_state["previous_score"], 16)
         payload = json.loads(self.requests[-1]["input"])
         self.assertEqual(payload["description"], DESCRIPTION)
-        self.assertEqual(len(payload["answers"]), 6)
+        self.assertEqual(len(payload["answers"]), 5)
+        self.assertIn(DETAILS["contact"], payload["answers"][-1]["answer"])
         self.assertTrue(any(metric.value == "16 → 78" for metric in app.metric))
 
         # Manual edits invalidate the prior score, survive navigation and API errors.
