@@ -1,3 +1,16 @@
+<<<<<<< HEAD
 skills.md
 .env
 case.md
+=======
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+.pytest_cache/
+*.tmp
+.runtime/
+>>>>>>> e05e849 (Build initial end-to-end MVP)

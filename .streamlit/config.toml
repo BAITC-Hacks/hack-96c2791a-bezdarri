@@ -1,0 +1,3 @@
+[runner]
+# Finish the current request before processing a queued widget rerun.
+fastReruns = false

@@ -1,6 +1,7 @@
-# AI Task Gamification Platform
+ HEAD
+# TaskForge
 
-Веб-платформа для превращения сырой бизнес-задачи в структурированное и готовое к работе техническое задание. AI помогает уточнить требования, а система геймификации мотивирует бизнес повышать качество задачи. Студенческие команды самостоятельно выбирают задачи, отправляют предложения, а финальное решение всегда принимает бизнес.
+A beginner-friendly Streamlit hackathon MVP that turns vague business problems into structured student tasks, with optional OpenAI-assisted drafting and quality scoring. Python and JSON persistence; no authentication, database, or Docker.
 
 ## Концепция: «Развилка»
 
@@ -72,74 +73,82 @@
 - `+10` — Describe constraints
 
 После подтверждения изменения карточки рейтинг автоматически пересчитывается. Таким образом заполнение задачи превращается в понятную механику прогресса.
+## Run locally
 
-### 4. Generate Task Card
+Requires Python 3.10 or newer. From the project folder:
 
-После ответов AI преобразует исходное описание и уточнения в структурированную карточку:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+On macOS/Linux, replace `.\.venv\Scripts\python.exe` with `.venv/bin/python`.
+Before starting, edit your local `.env` and set `OPENAI_API_KEY` to your own key. Do not overwrite an existing `.env`. It is ignored by Git. Never put the key in the UI or source code. `OPENAI_MODEL` defaults to `gpt-4o-mini`; use a model available to your account that supports Responses API structured outputs. Calls require API access and billing. Existing environment variables take precedence over `.env`.
+
+Open http://localhost:8501. Stop the server with Ctrl+C. Catalog, proposals, manual reviews, and manual task creation still work without a key. AI actions show a safe configuration error until a key is configured.
+
+## Demo flow
+
+1. **Create Task:** Enter a vague description and click **Analyze with AI**. Review the initial quality score, evidence-based explanations, suggestions, and at least three clarification questions. Answer questions and click **Update task with answers**. The updated editable card and score change appear. You can edit every field and click **Reanalyze edited card**; edits invalidate the previous assessment for publishing. Review the facts, tick the confirmation box, then explicitly **Publish task**. A title is required; low-scoring briefs can still be published. Clicking Analyze with AI again starts a fresh draft from the description.
+2. **Catalog:** Browse tasks ordered by score, highest first, or filter by level. Expand a task and submit a team name, solution idea, plan, estimated time, and optional HTTP(S) prototype URL. Existing team names are matched without case sensitivity; new names create team records. Proposals start as Pending.
+3. **Business Dashboard:** Review proposals under their tasks and manually Accept or Reject each one. Decisions persist and can be changed. Multiple acceptances are allowed; the application never automatically chooses a team or rejects other proposals.
 
 `Title` · `Context` · `Need` · `Users` · `Data` · `Constraints` · `Expected Result` · `Success Criteria` · `Contact` · `Interaction Format` · `Feedback Procedure`
+Five fictional tasks span all four readiness levels, and five fictional teams are included. Contact addresses use `.example`; referenced sample materials are illustrative and are not bundled. Proposals start empty so you can demonstrate the whole flow.
 
-Карточка остаётся редактируемой и публикуется только после подтверждения пользователем.
+## Readiness scoring
 
-### 5. Before / After
+AI evaluates quality and completeness using the rubric below. Vague mentions receive low credit; specific, actionable information earns more. Each category includes awarded points, its maximum, an explanation, and an improvement suggestion. Missing categories earn zero. Context and need each account for up to 10 points. The title does not contribute to readiness. AI scores are subjective and may vary between calls; improvement is never forced.
 
-Система наглядно показывает улучшение задачи.
+| Category | Points |
+| --- | ---: |
+| Context and need | 20 |
+| Data/materials | 20 |
+| Expected result | 15 |
+| Success criteria | 15 |
+| Constraints | 10 |
+| Users | 10 |
+| Business contact/interaction format | 10 |
 
 **До:** `We need AI for reviews.` — **0/100 · Draft**: не уточнены текущая ситуация, данные, результат и критерии приёмки.
 
 **После:** бизнес подтвердил все поля, кроме критериев приёмки, — **85/100 · Ready**. Добавление критериев даст ещё **+15** и поднимет задачу до **100/100 · Priority**.
 
----
+## AI behavior and validation
 
-## Каталог и студенческие команды
+The integration uses the [OpenAI Responses API with Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs). The description, current card, and submitted answers are sent only when an AI button is clicked, with response storage disabled (`store=False`). No API key is included in prompts, JSON records, or UI messages. Errors use fixed messages and do not display raw provider responses.
 
-### 7. Smart Catalog Ranking
+AI may summarize and paraphrase supplied information, including the title, but must not introduce new factual claims. Unknowns stay blank, are listed as missing, and receive clarification questions (at least three when three or more fields need clarification). Local validation rejects obvious unsupported email addresses, URLs, and numeric facts while allowing ordinary rewording. These checks do not establish semantic truth or catch every unsupported claim, so the prompt forbids invention and the business must review and confirm the facts.
 
-Все опубликованные задачи находятся в общем каталоге. Их позиция зависит от **Readiness Score**: более подготовленные задачи располагаются выше.
+Validation also checks exact categories and maxima, integer scores within bounds, zero points for absent categories, score arithmetic, readiness level, question count, and missing-field coverage. Invalid/incomplete responses, refusals, and API failures preserve the previous draft. Reanalysis of manual edits must return that exact card unchanged. The initial and previous scores are held in session state; drafts survive sidebar navigation but are not saved across a server restart or new browser session.
 
 По умолчанию каталог сортируется по убыванию рейтинга, при равном рейтинге — по дате публикации (новые выше). Доступны фильтры по теме и уровню готовности. Низкий рейтинг не скрывает задачу и не блокирует предложение команды.
 
 Пример:
+## Project structure
 
 ```text
-94  PRIORITY   AI Customer Support Assistant
-82  READY      Warehouse Demand Forecasting
-61  WORKABLE   Restaurant Review Analyzer
-27  DRAFT      Improve Our Website
+app.py                 # Sidebar navigation and three pages
+requirements.txt       # Streamlit, OpenAI SDK, python-dotenv
+.env.example           # API key and model configuration template
+.gitignore
+README.md
+data/
+  tasks.json           # Published tasks
+  teams.json           # Seed teams and newly submitted team names
+  proposals.json       # Proposals and manual review status
+services/
+  __init__.py
+  scoring.py           # Checklist weights, levels, and suggestions
+  ai.py                # Structured API call, grounding and rubric validation
+  storage.py           # JSON reads, writes, and record operations
 ```
 
-Низкий рейтинг не скрывает задачу и не запрещает командам подавать предложения.
+Data paths are relative to the project, independent of the working directory. Writes replace each file atomically to reduce partial-write risk. Invalid JSON produces an error instead of silently replacing existing data. This local demo is intended for one server and sequential use; it does not coordinate simultaneous writers. With no authentication, every visitor can access the dashboard, so use synthetic information only.
 
-### 8. Readiness Badges
-
-Каждая задача получает визуальный статус:
-
-`DRAFT 32` · `WORKABLE 61` · `READY 84` · `PRIORITY 96`
-
-Badge позволяет студентам сразу понять, насколько задача подготовлена к работе.
-
-### 9. Smart Filters
-
-Каталог поддерживает фильтрацию и сортировку:
-
-- по тематике: `AI`, `Web`, `Data`, `Automation`;
-- по уровню: `Draft`, `Workable`, `Ready`, `Priority`;
-- по Readiness Score;
-- по новизне.
-
-### 10. Student Skill Match
-
-Команда указывает свои навыки и технологии, например:
-
-`Python` · `React` · `NLP` · `Machine Learning`
-
-Система может показывать рекомендацию:
-
-> **87% Skill Match** — Python ✓ AI/NLP ✓ React ✓
-
-Это только рекомендация. Она **не ограничивает доступ к каталогу и не назначает команду автоматически**.
-
-### 11. One-Click Proposal
+## Verify the MVP
 
 Любая студенческая команда может открыть задачу и нажать **Submit Proposal**.
 
@@ -282,3 +291,11 @@ AI **не выбирает победителя**. Бизнес самостоя
 6. Подать некорректный ответ AI или сделать его недоступным: система показывает ошибку или вопросы из локальной заглушки, не публикует неподтверждённую карточку.
 
 Для защиты достаточно одного сквозного сценария до ручного выбора команды: слабое описание → уточнение → рост рейтинга → публикация → предложение → решение бизнеса. Подтверждение этапа и отзыв показываются после него, если укладываются в пятиминутное демо.
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Tests use temporary copies of JSON files and mock HTTP responses through the real OpenAI SDK; no key, API charges, or external requests are required. They cover the original manual flow and the complete AI draft → questions → answers → improved score → manual edits → reanalysis → confirmation → publication → catalog → proposal → Accept/Reject scenario, plus malformed responses and API failures. Mock tests verify the integration and state transitions, not live model output quality.
+
+For a live smoke test after configuring your key, enter: "We run an online clothing store and many customers abandon their carts. We want students to help us understand why." Verify unknown data, metrics, constraints, and contact stay empty. Answer questions with actual specifics (for example, available anonymized CSV data, a deadline, a deliverable, a measurable criterion, and a contact format), reanalyze, review the score explanation, and publish only after confirming the facts. Then submit a proposal in Catalog and manually review it in Business Dashboard.
+4a055f2 (Complete AI analysis and clarification flow)
